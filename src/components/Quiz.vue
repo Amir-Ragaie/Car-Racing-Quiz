@@ -308,44 +308,155 @@ export default {
   },
   methods: {
     toggleCategory(team, index) {
- let q = this.Questions[team][index].question;
-    let ans = this.Questions[team][index].answer;
-    swal.fire({
-      width: '800px',
-      height: '500px',
-      title: `<span style="font-size: 50px; font-weight: bold">${q}</span>`,
-      confirmButtonText: "الاجابة",
-    }).then((result) => {
-      if (result.isConfirmed) {
-        swal.fire({
-          title: `<span style="font-size: 50px; font-weight: bold">${ans}</span>`,
-          showDenyButton: true,
-          showCancelButton: true,
-          confirmButtonText: `<span style="font-size: 30px; font-weight: bold; color: white;">صح ✓</span>`,
-          denyButtonText: `<span style="font-size: 30px; font-weight: bold; color: white;">غلط ✗</span>`,
-          cancelButtonText: `<span style="font-size: 20px; font-weight: bold;">إلغاء</span>`,
-          confirmButtonColor: '#28a745',
-          denyButtonColor: '#dc3545',
-          cancelButtonColor: '#6c757d'
-        }).then((answerResult) => {
-          if (answerResult.isConfirmed) {
-            // Green button clicked - correct answer
-            this.addScore(team);
-            this.Winner();
-          } else if (answerResult.isDenied) {
-            // Red button clicked - wrong answer
-            this.Loser();
-          }
-          // If cancel is clicked, do nothing
-        });
+  let q = this.Questions[team][index].question;
+  let ans = this.Questions[team][index].answer;
+  swal.fire({
+    width: '800px',
+    height: '500px',
+    title: `<span style="font-size: 50px; font-weight: bold">${q}</span>`,
+    confirmButtonText: "الاجابة",
+  }).then((result) => {
+    if (result.isConfirmed) {
+      swal.fire({
+        title: `<span style="font-size: 50px; font-weight: bold">${ans}</span>`,
+        showDenyButton: true,
+        showCancelButton: true,
+        confirmButtonText: `<span style="font-size: 30px; font-weight: bold; color: white;">صح ✓</span>`,
+        denyButtonText: `<span style="font-size: 30px; font-weight: bold; color: white;">غلط ✗</span>`,
+        cancelButtonText: `<span style="font-size: 20px; font-weight: bold;">إلغاء</span>`,
+        confirmButtonColor: '#28a745',
+        denyButtonColor: '#dc3545',
+        cancelButtonColor: '#6c757d'
+      }).then((answerResult) => {
+        if (answerResult.isConfirmed) {
+          // Green button clicked - correct answer
+          this.addScore(team);
+          this.Winner();
+        } else if (answerResult.isDenied) {
+          // Red button clicked - wrong answer
+          this.Loser();
+        }
+        // Check game completion only after the answer popup is closed
+        this.checkGameCompletion(10);
+      });
+    }
+  });
+  
+  // Mark the question as used/faded
+  this.categories[team][index] = true;
+  const categoryDiv = document.querySelector('.categories > *:nth-child(' + index + ')');
+  if (this.categories[team][index]) {
+    categoryDiv.classList.add('fade');
+  }
+
+},
+   checkGameCompletion(no_of_questions) {
+    // Check if all questions in all categories are faded (completed)
+    const allTeams = ['الاخضر', 'الاحمر', 'الازرق', 'الاصفر'];
+    let allCompleted = true;
+
+    for (let team of allTeams) {
+      for (let i = 1; i <= no_of_questions; i++) {
+        if (!this.categories[team][i]) {
+          allCompleted = false;
+          break;
+        }
       }
-    });
-    this.categories[team][index] = true;
-    const categoryDiv = document.querySelector('.categories > *:nth-child(' + index + ')');
-    if (this.categories[team][index]) {
-      categoryDiv.classList.add('fade');
+      if (!allCompleted) break;
+    }
+
+    if (allCompleted) {
+
+      this.showFinalWinner();
     }
   },
+
+  showFinalWinner() {
+    // Find the team with highest score
+    const scores = {
+      'الاخضر': this.correctAnswers1,
+      'الاحمر': this.correctAnswers2,
+      'الازرق': this.correctAnswers3,
+      'الاصفر': this.correctAnswers4
+    };
+
+    let maxScore = Math.max(...Object.values(scores));
+    let winners = [];
+
+    // Find all teams with the highest score (in case of tie)
+    for (let team in scores) {
+      if (scores[team] === maxScore) {
+        winners.push(team);
+      }
+    }
+
+    let message;
+    if (winners.length === 1) {
+      message = `🏆 الفائز: ${winners[0]} 🏆<br>بنتيجة: ${maxScore} نقطة`;
+    } else {
+      message = `🏆 تعادل بين: ${winners.join(' و ')} 🏆<br>بنتيجة: ${maxScore} نقطة`;
+    }
+
+    swal.fire({
+      title: 'انتهت اللعبة!',
+      html: `<div style="font-size: 40px; font-weight: bold; color: #28a745;">${message}</div>
+             <br>
+             <div style="font-size: 24px;">
+               <p>النتائج النهائية:</p>
+               <p>الاخضر: ${this.correctAnswers1}</p>
+               <p>الاحمر: ${this.correctAnswers2}</p>
+               <p>الازرق: ${this.correctAnswers3}</p>
+               <p>الاصفر: ${this.correctAnswers4}</p>
+             </div>`,
+      icon: 'success',
+      confirmButtonText: 'تهانينا!',
+      confirmButtonColor: '#28a745',
+      allowOutsideClick: false,
+      allowEscapeKey: false
+      }).then((result) => {
+        if (result.isConfirmed) {
+          this.restartGame();
+        }
+      });
+
+      // Play winner sound
+      this.Winner();
+    },
+
+    restartGame() {
+      // Reset all scores
+      this.correctAnswers1 = 0;
+      this.correctAnswers2 = 0;
+      this.correctAnswers3 = 0;
+      this.correctAnswers4 = 0;
+
+      // Reset all categories to unfaded
+      this.categories = {
+        'الاخضر': {1: false, 2: false, 3: false},
+        'الاحمر': {1: false, 2: false, 3: false},
+        'الازرق': {1: false, 2: false, 3: false},
+        'الاصفر': {1: false, 2: false, 3: false},
+      };
+
+      // Reset team selections
+      this.alakhdar = false;
+      this.alahmar = false;
+      this.alazraa = false;
+      this.alasfar = false;
+
+      // Remove fade from all category buttons
+      const allCategoryButtons = document.querySelectorAll('.categories .text');
+      allCategoryButtons.forEach(button => {
+        button.classList.remove('fade');
+      });
+
+      // Remove fade from all team buttons
+      const allTeamButtons = document.querySelectorAll('.teams > div');
+      allTeamButtons.forEach(button => {
+        button.classList.remove('fade');
+      });
+    },
+
   addScore(team) {
     switch(team) {
       case 'الاخضر':
